@@ -1,35 +1,75 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
+using System.Threading;
 
 namespace ChatApplication
 {
     class Program
     {
+        private List<TcpClient> alive_clients = new List<TcpClient>();
+        
         static void Main(string[] args)
         {
-            Socket server = new Socket(AddressFamily.InterNetwork, 
-                SocketType.Stream, 
-                ProtocolType.Tcp);
+            Program server = new Program();
+            server.listen();
+        }
+
+        private void listen()
+        {            
+            IPEndPoint localEndPoint = new IPEndPoint(Dns.Resolve(Dns.GetHostName()).AddressList[0], 4200);
             
-            IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 4200);
+            TcpListener server = new TcpListener(localEndPoint);
+            try {
+                
+                server.Start();
 
-            server.Bind(localEndPoint);
-            // SUPPORT 100 USERS BEFORE SENDING
-            server.Listen(100);
+                while (true) {
 
-            Socket childSocket = server.Accept();
-            Console.WriteLine("Waiting for a connection...");
-            server.BeginAccept(new AsyncCallback(ar =>
+                    Console.WriteLine("Waiting for a connection...");
+                    TcpClient client = server.AcceptTcpClient();
+
+                    new Thread((o) =>
+                    {
+                        AcceptCallback(client);
+                    });
+                }
+            } catch (Exception e) {  
+                Console.WriteLine(e.ToString());  
+            }
+        }
+        
+        private void AcceptCallback(TcpClient client)
+        {
+            alive_clients.Add(client);
+            Console.WriteLine("New connection from bitch");
+
+            NetworkStream stream = client.GetStream();
+            byte[] data = new byte[1024];
+
+            while (client.Available > 0)
             {
-                Console.Write(ar.ToString()); 
-            }), server);
-            
-//            server.BeginReceive(new AsyncCallback(ar =>
-//            {
-//                Console.Write(ar.ToString());
-//            }), server)
+                stream.Read(data, 0, data.Length);
+                ReadCallback(data);
+            }
 
+            alive_clients.Remove(client);
+            client.Close();
+        }
+
+        private void ReadCallback(byte[] data)
+        {
+            NetworkStream stream;
+            String msg = Encoding.UTF8.GetString(data);
+            Console.WriteLine("New message: "+msg);
+
+            alive_clients.ForEach(c =>
+            {
+                stream = c.GetStream();
+                stream.Write(data, 0, data.Length);
+            });
         }
     }
 }
