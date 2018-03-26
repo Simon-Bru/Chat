@@ -5,7 +5,7 @@ namespace ChatApplication
     public class Message
     {
         private String     clientName;
-        private String     message;
+        private String     content;
         private DateTime   sentAt;
 
         public string ClientName
@@ -14,10 +14,10 @@ namespace ChatApplication
             set => clientName = value;
         }
 
-        public string Message1
+        public string Content
         {
-            get => message;
-            set => message = value;
+            get => content;
+            set => content = value;
         }
 
         public DateTime SentAt
